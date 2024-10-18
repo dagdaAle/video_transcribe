@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Elaborato</title>
+</head>
+<body>
+    <h1>Elaborazione completata per {{ filename }}</h1>
+    <p>Il video è stato elaborato con successo.</p>
+    <h2>Download dei risultati:</h2>
+    <ul>
+        <li><a href="{{ url_for('download_file', filename=filename, filetype='json') }}">Scarica JSON con frasi e timestamp</a></li>
+        <li><a href="{{ url_for('download_file', filename=filename, filetype='txt') }}">Scarica testo ricostruito</a></li>
+    </ul>
+    <a href="{{ url_for('upload_file') }}">Torna alla pagina di caricamento</a>
+</body>
+</html>

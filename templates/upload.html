@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carica Video</title>
+    <style>
+        #drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 20px;
+            width: 480px;
+            height: 270px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 20px auto;
+            cursor: pointer;
+        }
+        #drop-zone.dragover {
+            border-color: #000;
+            background-color: #eee;
+        }
+        #file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Carica il tuo video</h1>
+    <form id="upload-form" method="post" enctype="multipart/form-data">
+        <div id="drop-zone">
+            Trascina qui il tuo file MP4 o clicca per selezionarlo
+        </div>
+        <input type="file" id="file-input" name="file" accept=".mp4">
+        <button type="submit" id="submit-btn" style="display: none;">Carica</button>
+    </form>
+    <p id="file-name"></p>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadForm = document.getElementById('upload-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const fileNameDisplay = document.getElementById('file-name');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', () => {
+            handleFiles(fileInput.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'video/mp4') {
+                    fileNameDisplay.textContent = `File selezionato: ${file.name}`;
+                    submitBtn.style.display = 'block';
+                } else {
+                    alert('Per favore, seleziona un file MP4.');
+                    fileNameDisplay.textContent = '';
+                    submitBtn.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
