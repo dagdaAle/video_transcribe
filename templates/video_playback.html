@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riproduzione Video con Sottotitoli</title>
+    <style>
+        .video-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .transcript-container {
+            max-width: 800px;
+            margin: 20px auto;
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .phrase {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .phrase.active {
+            background-color: yellow;
+        }
+        .processing-time {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="processing-time" id="processing-time">
+        Tempo di elaborazione: Calcolo in corso...
+    </div>
+    
+    <div class="video-container">
+        <video id="video" controls width="100%">
+            <source src="{{ url_for('static', filename='uploads/' + filename) }}" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+        </video>
+    </div>
+    
+    <div class="transcript-container" id="transcript">
+        {% for phrase in phrases %}
+        <div class="phrase" data-start="{{ phrase.start_time }}" data-end="{{ phrase.end_time }}">
+            {{ phrase.text }}
+        </div>
+        {% endfor %}
+    </div>
+    
+    <script>
+        const video = document.getElementById('video');
+        const transcript = document.getElementById('transcript');
+        const phrases = transcript.getElementsByClassName('phrase');
+
+        function timeToSeconds(timeString) {
+            const [hours, minutes, seconds] = timeString.split(':').map(parseFloat);
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        function updateActivePhrase() {
+            const currentTime = video.currentTime;
+            for (let phrase of phrases) {
+                const start = timeToSeconds(phrase.dataset.start);
+                const end = timeToSeconds(phrase.dataset.end);
+                if (currentTime >= start && currentTime < end) {
+                    phrase.classList.add('active');
+                    phrase.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    phrase.classList.remove('active');
+                }
+            }
+        }
+
+        video.addEventListener('timeupdate', updateActivePhrase);
+
+        function secondsToHMS(totalSeconds) {
+            totalSeconds = parseFloat(totalSeconds);
+            if (isNaN(totalSeconds) || totalSeconds < 0) {
+                return "Tempo non valido";
+            }
+            
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            
+            let result = [];
+            if (hours > 0) result.push(`${hours} ore`);
+            if (minutes > 0) result.push(`${minutes} minuti`);
+            if (seconds > 0 || (hours === 0 && minutes === 0)) result.push(`${seconds} secondi`);
+            
+            return result.join(' e ');
+        }
+
+        // Converti e visualizza il tempo di elaborazione
+        const processingTimeSeconds = {{ processing_time|tojson }};
+        const processingTimeFormatted = secondsToHMS(processingTimeSeconds);
+        document.getElementById('processing-time').textContent = `Tempo di elaborazione: ${processingTimeFormatted}`;
+    </script>
+</body>
+</html>

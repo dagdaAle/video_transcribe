@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file
 import os
 from process_video import process_video
+import json
 
 app = Flask(__name__)
 
@@ -35,9 +36,9 @@ def upload_file():
             
             # Processa il video
             output_folder = os.path.join(app.config['OUTPUT_FOLDER'], filename.rsplit('.', 1)[0])
-            json_file_path, testo_ricostruito = process_video(file_path, output_folder)
+            json_file_path, testo_completo, processing_time = process_video(file_path, output_folder)
             
-            return redirect(url_for('file_processed', filename=filename))
+            return redirect(url_for('file_processed', filename=filename, processing_time=processing_time))
     return render_template('upload.html')
 
 @app.route('/processed/<filename>')
@@ -45,7 +46,12 @@ def file_processed(filename):
     base_filename = filename.rsplit('.', 1)[0]
     output_folder = os.path.join(app.config['OUTPUT_FOLDER'], base_filename)
     json_file_path = os.path.join(output_folder, "frasi_con_timestamp.json")
-    return render_template('processed.html', filename=filename, json_file=json_file_path)
+    processing_time = float(request.args.get('processing_time', 0))
+    
+    with open(json_file_path, 'r') as f:
+        phrases = json.load(f)
+    
+    return render_template('video_playback.html', filename=filename, phrases=phrases, processing_time=processing_time)
 
 @app.route('/download/<filename>/<filetype>')
 def download_file(filename, filetype):
