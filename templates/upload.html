@@ -4,37 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carica Video</title>
-    <style>
-        #drop-zone {
-            border: 2px dashed #ccc;
-            border-radius: 20px;
-            width: 480px;
-            height: 270px;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-            margin: 20px auto;
-            cursor: pointer;
-        }
-        #drop-zone.dragover {
-            border-color: #000;
-            background-color: #eee;
-        }
-        #file-input {
-            display: none;
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Carica il tuo video</h1>
-    <form id="upload-form" method="post" enctype="multipart/form-data">
-        <div id="drop-zone">
-            Trascina qui il tuo file MP4 o clicca per selezionarlo
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Carica il tuo video</h1>
+        
+        <div class="max-w-2xl mx-auto">
+            <form id="upload-form" method="post" enctype="multipart/form-data" class="space-y-6">
+                <!-- Drop Zone -->
+                <div id="drop-zone" 
+                     class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer
+                            transition-all duration-200 hover:border-gray-400 hover:bg-gray-50">
+                    <div class="text-gray-600">
+                        Trascina qui il tuo file MP4 o clicca per selezionarlo
+                    </div>
+                </div>
+                
+                <input type="file" id="file-input" name="file" accept=".mp4" class="hidden">
+                
+                <!-- File Name Display -->
+                <p id="file-name" class="text-sm text-gray-600 text-center"></p>
+                
+                <!-- Buttons Container -->
+                <div class="flex justify-center space-x-4">
+                    <!-- Upload Button -->
+                    <button type="submit" 
+                            id="submit-btn" 
+                            style="display: none;"
+                            class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 
+                                   transition-colors duration-200">
+                        Carica Video
+                    </button>
+                    
+                    <!-- Realtime Translation Button -->
+                    <a href="{{ url_for('traduzione_tempo_reale') }}" 
+                       class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 
+                              transition-colors duration-200">
+                        Traduzione in Tempo Reale
+                    </a>
+                </div>
+            </form>
         </div>
-        <input type="file" id="file-input" name="file" accept=".mp4">
-        <button type="submit" id="submit-btn" style="display: none;">Carica</button>
-    </form>
-    <p id="file-name"></p>
+    </div>
 
     <script>
         const dropZone = document.getElementById('drop-zone');
@@ -47,16 +59,16 @@
 
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.classList.add('dragover');
+            dropZone.classList.add('bg-gray-100');
         });
 
         dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
+            dropZone.classList.remove('bg-gray-100');
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('dragover');
+            dropZone.classList.remove('bg-gray-100');
             fileInput.files = e.dataTransfer.files;
             handleFiles(e.dataTransfer.files);
         });

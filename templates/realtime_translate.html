@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trascrizione Video in Tempo Reale</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full">
+    <div class="min-h-full">
+        <header class="bg-white shadow">
+            <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl font-bold tracking-tight text-gray-900">Trascrizione Video in Tempo Reale</h1>
+                    <a href="{{ url_for('upload_file') }}" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded text-center">
+                        Torna al Caricamento
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+                <div class="px-4 py-6 sm:px-0">
+                    <!-- Area Drag & Drop -->
+                    <div id="dropZone" class="mb-6 relative">
+                        <input type="file" 
+                               id="videoFile" 
+                               accept="video/*" 
+                               class="hidden">
+                        
+                        <label for="videoFile" 
+                               class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all duration-300 group">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <!-- Icona Upload -->
+                                <svg class="w-10 h-10 mb-3 text-gray-400 group-hover:text-gray-600" 
+                                     fill="none" 
+                                     stroke="currentColor" 
+                                     viewBox="0 0 24 24" 
+                                     xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" 
+                                          stroke-linejoin="round" 
+                                          stroke-width="2" 
+                                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                    </path>
+                                </svg>
+                                <p class="mb-2 text-sm text-gray-500">
+                                    <span class="font-semibold">Clicca per caricare</span> o trascina qui il tuo video
+                                </p>
+                                <p class="text-xs text-gray-500">MP4, WebM o OGG (MAX. 500MB)</p>
+                            </div>
+                        </label>
+
+                        <!-- Barra di Progresso -->
+                        <div id="uploadProgress" 
+                             class="hidden w-full h-1 bg-gray-200 rounded-full overflow-hidden absolute bottom-0">
+                            <div class="h-full bg-green-500 transition-all duration-300" 
+                                 style="width: 0%">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Anteprima Video -->
+                    <div id="videoPreview" class="mb-6 hidden">
+                        <video id="videoPlayer" 
+                               class="w-full max-h-96 bg-black rounded-lg" 
+                               controls>
+                            Il tuo browser non supporta il tag video.
+                        </video>
+                    </div>
+
+                    <!-- Controlli -->
+                    <div class="flex space-x-4 mb-4">
+                        <button id="startButton" 
+                                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed" 
+                                disabled>
+                            Avvia Trascrizione
+                        </button>
+                        <button id="stopButton" 
+                                class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed" 
+                                disabled>
+                            Ferma Trascrizione
+                        </button>
+                    </div>
+
+                    <!-- Area Trascrizione -->
+                    <div id="transcription" 
+                         class="h-64 border-4 border-dashed border-gray-200 rounded-lg p-4 overflow-y-auto">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const socket = io();
+        let audioContext;
+        let processor;
+        let source;
+        
+        const dropZone = document.getElementById('dropZone');
+        const videoFile = document.getElementById('videoFile');
+        const videoPreview = document.getElementById('videoPreview');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const transcriptionDiv = document.getElementById('transcription');
+
+        // Prevenzione comportamento default per drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Gestione effetti visuali durante il drag
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.querySelector('label').classList.add('border-blue-500', 'bg-blue-50');
+        }
+
+        function unhighlight(e) {
+            dropZone.querySelector('label').classList.remove('border-blue-500', 'bg-blue-50');
+        }
+
+        // Gestione drop del file
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        // Gestione input file tradizionale
+        videoFile.addEventListener('change', function(e) {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            const file = files[0];
+            
+            // Controllo tipo file
+            if (!file.type.startsWith('video/')) {
+                alert('Per favore carica un file video.');
+                return;
+            }
+
+            // Controllo dimensione file (500MB)
+            if (file.size > 500 * 1024 * 1024) {
+                alert('Il file è troppo grande. La dimensione massima è 500MB.');
+                return;
+            }
+
+            // Simulazione upload con progress bar
+            uploadProgress.classList.remove('hidden');
+            const progressBar = uploadProgress.querySelector('div');
+            let progress = 0;
+            
+            const interval = setInterval(() => {
+                progress += 5;
+                progressBar.style.width = `${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        uploadProgress.classList.add('hidden');
+                        loadVideo(file);
+                    }, 500);
+                }
+            }, 50);
+        }
+
+        function loadVideo(file) {
+            const videoUrl = URL.createObjectURL(file);
+            videoPlayer.src = videoUrl;
+            videoPreview.classList.remove('hidden');
+            startButton.disabled = false;
+            startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Il resto del codice per la gestione audio/video e trascrizione rimane invariato
+        startButton.onclick = async () => {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                source = audioContext.createMediaElementSource(videoPlayer);
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                source.connect(audioContext.destination);
+                
+                processor.onaudioprocess = function(e) {
+                    const float32Array = e.inputBuffer.getChannelData(0);
+                    const int16Array = convertFloat32ToInt16(float32Array);
+                    socket.emit('audio_chunk', int16Array.buffer);
+                };
+
+                videoPlayer.play();
+                startButton.disabled = true;
+                startButton.classList.add('opacity-50', 'cursor-not-allowed');
+                stopButton.disabled = false;
+                stopButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            } catch (err) {
+                console.error('Errore:', err);
+                alert('Errore: ' + err.message);
+            }
+        };
+
+        stopButton.onclick = () => {
+            if (processor && source) {
+                source.disconnect(processor);
+                processor.disconnect(audioContext.destination);
+                source.disconnect(audioContext.destination);
+                processor.onaudioprocess = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            videoPlayer.pause();
+            startButton.disabled = false;
+            startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            stopButton.disabled = true;
+            stopButton.classList.add('opacity-50', 'cursor-not-allowed');
+        };
+
+        videoPlayer.addEventListener('ended', () => {
+            stopButton.click();
+        });
+
+        function convertFloat32ToInt16(buffer) {
+            let l = buffer.length;
+            const int16Buffer = new Int16Array(l);
+            while (l--) {
+                int16Buffer[l] = buffer[l] * 0x7FFF;
+            }
+            return int16Buffer;
+        }
+
+        socket.on('transcription_result', (data) => {
+            const p = document.createElement('p');
+            p.textContent = data.text;
+            p.className = 'mb-2';
+            transcriptionDiv.appendChild(p);
+            transcriptionDiv.scrollTop = transcriptionDiv.scrollHeight;
+        });
+
+        socket.on('transcription_partial', (data) => {
+            console.log('Partial transcription:', data.text);
+        });
+
+        socket.on('error', (data) => {
+            console.error('Errore:', data.message);
+            const p = document.createElement('p');
+            p.textContent = 'Errore: ' + data.message;
+            p.className = 'text-red-500 mb-2';
+            transcriptionDiv.appendChild(p);
+        });
+    </script>
+</body>
+</html>
